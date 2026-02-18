@@ -2,7 +2,48 @@ import streamlit as st
 import openai
 from PyPDF2 import PdfReader
 import os
+# --- ESTILO NEÓN Y MODO OSCURO ---
+st.markdown("""
+    <style>
+    /* Fondo total de la app */
+    .stApp {
+        background-color: #050505;
+    }
+    
+    /* Texto en verde neón */
+    h1, h2, h3, p, span, label {
+        color: #00FF41 !important;
+        font-family: 'Courier New', Courier, monospace !important;
+    }
 
+    /* Estilo para los botones */
+    div.stButton > button:first-child {
+        background-color: #1A1A1A;
+        color: #00FF41;
+        border: 2px solid #00FF41;
+        border-radius: 5px;
+        box-shadow: 0 0 10px #00FF41;
+        font-weight: bold;
+    }
+
+    div.stButton > button:hover {
+        background-color: #00FF41;
+        color: black;
+    }
+
+    /* Estilo para los inputs de texto */
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
+        background-color: #1A1A1A !important;
+        color: #00FF41 !important;
+        border: 1px solid #00FF41 !important;
+    }
+
+    /* Línea divisoria neón */
+    hr {
+        border: 1px solid #00FF41 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 # Configuración de la página
 st.set_page_config(page_title="Campayo AI Mind", layout="wide")
 
