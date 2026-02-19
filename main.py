@@ -1,135 +1,136 @@
 import streamlit as st
 from groq import Groq
 from PyPDF2 import PdfReader
+import sqlite3
 
-st.set_page_config(page_title="Campayo Total Mind", layout="wide")
+# --- CONFIGURACIÓN Y BASE DE DATOS ---
+st.set_page_config(page_title="Campayo Multi-Tema", layout="wide")
+
+def init_db():
+    conn = sqlite3.connect('estudio_pro.db')
+    c = conn.cursor()
+    # Ahora guardamos por 'tema' en lugar de por 'nombre de archivo'
+    c.execute('''CREATE TABLE IF NOT EXISTS temarios 
+                 (tema TEXT, archivo TEXT, contenido TEXT)''')
+    conn.commit()
+    return conn
+
+conn = init_db()
 
 # --- ESTILO NEÓN ---
 st.markdown("""
     <style>
     .stApp { background-color: #050505; }
-    h1, h2, h3, p, span, label, .stMarkdown {
-        color: #00FF41 !important;
-        font-family: 'Courier New', Courier, monospace !important;
-    }
-    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
-        background-color: #1A1A1A !important;
-        color: #00FF41 !important;
-        border: 1px solid #00FF41 !important;
-    }
-    div.stButton > button {
-        background-color: #1A1A1A;
-        color: #00FF41;
-        border: 2px solid #00FF41;
-        font-weight: bold;
-    }
-    div.stButton > button:hover {
-        background-color: #00FF41;
-        color: black;
-    }
+    h1, h2, h3, p, span, label, .stMarkdown { color: #00FF41 !important; font-family: 'Courier New', Courier, monospace !important; }
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea { background-color: #1A1A1A !important; color: #00FF41 !important; border: 1px solid #00FF41 !important; }
+    div.stButton > button { background-color: #1A1A1A; color: #00FF41; border: 2px solid #00FF41; font-weight: bold; width: 100%; }
+    div.stButton > button:hover { background-color: #00FF41; color: black; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- INICIALIZACIÓN DE MEMORIA (Session State) ---
-if "texto_pdf" not in st.session_state:
-    st.session_state.texto_pdf = ""
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
 
-# --- SIDEBAR ---
-st.sidebar.title("🛠️ CONFIGURACIÓN")
+# --- SIDEBAR: GESTIÓN DE TEMAS ---
+st.sidebar.title("🗄️ BIBLIOTECA DE ESTUDIO")
 api_key = st.sidebar.text_input("Llave Groq (gsk_...)", type="password")
-st.sidebar.divider()
-casilleros = st.sidebar.text_area("📋 MIS CASILLEROS", 
-                                 value="1-Té, 2-Noé, 3-Amo, 4-Oca, 5-Ola, 6-Oso, 7-Ufo, 8-Hacha, 9-Ave, 10-Toro")
 
+st.sidebar.subheader("📥 Añadir a la Biblioteca")
+nombre_tema = st.sidebar.text_input("Nombre del Tema (ej: Historia 1)")
+nuevo_archivo = st.sidebar.file_uploader("Subir PDF", type=["pdf"])
+
+if nuevo_archivo and nombre_tema:
+    if st.sidebar.button("➕ Vincular al Tema"):
+        reader = PdfReader(nuevo_archivo)
+        texto = "".join([p.extract_text() for p in reader.pages])
+        c = conn.cursor()
+        c.execute("INSERT INTO temarios VALUES (?, ?, ?)", (nombre_tema.upper(), nuevo_archivo.name, texto))
+        conn.commit()
+        st.sidebar.success(f"'{nuevo_archivo.name}' añadido a {nombre_tema.upper()}")
+
+# Selección de Tema (Agrupado)
+cursor = conn.cursor()
+cursor.execute("SELECT DISTINCT tema FROM temarios")
+temas_disponibles = [fila[0] for fila in cursor.fetchall()]
+tema_elegido = st.sidebar.selectbox("Selecciona qué tema estudiar hoy:", ["Ninguno"] + temas_disponibles)
+
+if tema_elegido != "Ninguno":
+    # Aquí ocurre la magia: Juntamos todos los archivos de ese tema
+    cursor.execute("SELECT contenido FROM temarios WHERE tema=?", (tema_elegido,))
+    todos_los_textos = [fila[0] for fila in cursor.fetchall()]
+    st.session_state.texto_pdf = "\n\n--- NUEVA SECCIÓN/ARCHIVO ---\n\n".join(todos_los_textos)
+    st.sidebar.info(f"📚 Estudiando {len(todos_los_textos)} archivos vinculados a {tema_elegido}")
+
+
+# --- FUNCIÓN IA ---
 def llamar_ai(prompt_sistema, mensaje_usuario):
-    if not api_key:
-        st.error("⚠️ Falta la llave de Groq")
-        return ""
+    if not api_key: return "⚠️ Pega tu llave de Groq"
     try:
         client = Groq(api_key=api_key)
         res = client.chat.completions.create(
-            # Cambiamos a este que es el más estable actualmente
-            model="llama-3.1-8b-instant", 
-            messages=[
-                {"role": "system", "content": prompt_sistema},
-                {"role": "user", "content": mensaje_usuario}
-            ],
-            temperature=0.5,
-            max_tokens=2048 # Esto ayuda a que los resúmenes no se corten
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "system", "content": prompt_sistema}, {"role": "user", "content": mensaje_usuario}],
+            temperature=0.3, # Bajamos la temperatura para que sea más preciso y menos "creativo"
+            max_tokens=3000
         )
         return res.choices[0].message.content
-    except Exception as e:
-        return f"Error de conexión: {e}"
+    except Exception as e: return f"Error: {e}"
+
 # --- INTERFAZ ---
-st.title("🧠 CAMPAYO TOTAL MIND STATION")
+st.title("🧠 CAMPAYO PRO: MEMORIA TOTAL")
 
-tabs = st.tabs(["📂 SUBIR Y RESUMIR", "💬 CHAT CONTEXTUAL", "🧪 TEST INTERACTIVO", "🎭 ASOCIACIONES"])
+if temario_seleccionado == "Ninguno":
+    st.warning("👈 Sube un PDF o selecciona uno del historial en la barra lateral para comenzar.")
+else:
+    tabs = st.tabs(["📝 SUPER RESUMEN", "💬 CHAT DE APOYO", "🧪 TEST CIEGO", "🎭 ASOCIACIONES"])
 
-with tabs[0]:
-    st.header("Carga de Conocimiento")
-    archivo = st.file_uploader("Sube el PDF que será el cerebro de la app", type=["pdf"])
-    
-    if archivo:
-        if st.button("🧠 Procesar y Memorizar PDF"):
-            with st.spinner("Leyendo y analizando..."):
-                reader = PdfReader(archivo)
-                st.session_state.texto_pdf = "".join([p.extract_text() for p in reader.pages])
-                st.success("¡PDF cargado con éxito! Ahora todas las pestañas conocen este contenido.")
-    
-    if st.session_state.texto_pdf:
-        if st.button("📝 Generar Gran Resumen Detallado"):
-            with st.spinner("Redactando resumen extenso..."):
-                prompt_sys = "Eres Ramón Campayo. Crea un resumen MUY extenso, detallado y estructurado por puntos clave."
-                res = llamar_ai(prompt_sys, f"Analiza y resume a fondo este texto: {st.session_state.texto_pdf[:8000]}")
+    with tabs[0]:
+        st.header(f"Resumen Profundo: {temario_seleccionado}")
+        if st.button("🚀 Generar Resumen Exhaustivo (Puntos Clave)"):
+            with st.spinner("Analizando cada detalle..."):
+                prompt_sys = """Eres Ramón Campayo. Tu misión es extraer TODOS los puntos clave. 
+                No resumas de forma general. Usa este formato:
+                1. Conceptos Fundamentales (Explicación técnica).
+                2. Fechas y Datos Numéricos (Lista exacta).
+                3. Nombres y Autores.
+                4. Procesos paso a paso.
+                Sé extremadamente detallado y extenso."""
+                res = llamar_ai(prompt_sys, st.session_state.texto_pdf[:10000])
                 st.markdown(res)
 
-with tabs[1]:
-    st.header("Chat Inteligente (Sobre tu PDF)")
-    if not st.session_state.texto_pdf:
-        st.info("Sube un PDF en la primera pestaña para chatear sobre él.")
-    else:
-        for m in st.session_state.chat_history:
+    with tabs[1]:
+        st.header("Chat Contextual")
+        if "chat_pro" not in st.session_state: st.session_state.chat_pro = []
+        for m in st.session_state.chat_pro:
             with st.chat_message(m["role"]): st.markdown(m["content"])
-
-        if p := st.chat_input("Dime, ¿qué parte del PDF no entiendes?"):
-            st.session_state.chat_history.append({"role": "user", "content": p})
+        if p := st.chat_input("Pregunta sobre el temario..."):
+            st.session_state.chat_pro.append({"role": "user", "content": p})
             with st.chat_message("user"): st.markdown(p)
-            
-            prompt_sys = f"Eres Ramón Campayo. Responde dudas basándote exclusivamente en este PDF: {st.session_state.texto_pdf[:5000]}"
-            resp = llamar_ai(prompt_sys, p)
-            
+            resp = llamar_ai(f"Basado en este texto: {st.session_state.texto_pdf[:6000]}", p)
             with st.chat_message("assistant"): st.markdown(resp)
-            st.session_state.chat_history.append({"role": "assistant", "content": resp})
+            st.session_state.chat_pro.append({"role": "assistant", "content": resp})
 
-with tabs[2]:
-    st.header("Entrenamiento Tipo Test")
-    if st.session_state.texto_pdf:
-        if st.button("🎲 Generar Nueva Pregunta de Examen"):
-            prompt_sys = "Genera UNA pregunta tipo test difícil sobre el PDF. Formato: Pregunta | A) opción | B) opción | C) opción | Respuesta Correcta | Explicación."
-            pregunta_data = llamar_ai(prompt_sys, st.session_state.texto_pdf[:5000])
-            st.session_state.pregunta_actual = pregunta_data
+    with tabs[2]:
+        st.header("Test de Autoevaluación")
+        if st.button("🎲 Generar Pregunta"):
+            prompt_sys = """Genera una pregunta de examen difícil. 
+            IMPORTANTE: No reveles la respuesta al principio. 
+            Escribe: 'PREGUNTA: ...' seguido de 'OPCIONES: A, B, C'. 
+            Luego, al final, escribe '---SOLUCIÓN---' y la respuesta con explicación."""
+            st.session_state.pregunta_test = llamar_ai(prompt_sys, st.session_state.texto_pdf[:7000])
         
-        if "pregunta_actual" in st.session_state:
-            st.markdown(st.session_state.pregunta_actual)
-            col1, col2, col3 = st.columns(3)
-            with col1: 
-                if st.button("Opción A"): st.info("Revisa la solución en la explicación arriba.")
-            with col2: 
-                if st.button("Opción B"): st.info("Revisa la solución en la explicación arriba.")
-            with col3: 
-                if st.button("Opción C"): st.info("Revisa la solución en la explicación arriba.")
-    else:
-        st.warning("Primero sube un PDF.")
+        if "pregunta_test" in st.session_state:
+            # Separamos la pregunta de la solución
+            partes = st.session_state.pregunta_test.split("---SOLUCIÓN---")
+            st.markdown(partes[0])
+            with st.expander("👁️ VER RESPUESTA CORRECTA Y EXPLICACIÓN"):
+                if len(partes) > 1: st.success(partes[1])
+                else: st.write("La IA no generó la solución correctamente, intenta otra.")
 
-with tabs[3]:
-    st.header("Asociaciones Contextuales")
-    dato_raro = st.text_input("Dato difícil del PDF a memorizar:")
-    if st.button("✨ Crear Historia Increíble"):
-        if st.session_state.texto_pdf:
-            prompt_sys = f"Usa el contexto del PDF ({st.session_state.texto_pdf[:2000]}) y estos casilleros ({casilleros})."
-            res = llamar_ai(prompt_sys, f"Crea una asociación inverosímil para: {dato_raro}")
+    with tabs[3]:
+        st.header("Laboratorio de Asociaciones")
+        dato = st.text_input("Dato difícil de este PDF:")
+        if st.button("✨ Crear Asociación con Contexto"):
+            res = llamar_ai("Eres experto en mnemotecnia.", f"Usando el contexto de este temario, crea una asociación inverosímil para: {dato}")
             st.success(res)
-        else:
-            st.error("Sube el PDF para que la asociación sea contextual.")
+
+
+       
