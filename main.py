@@ -50,17 +50,18 @@ def llamar_ai(prompt_sistema, mensaje_usuario):
     try:
         client = Groq(api_key=api_key)
         res = client.chat.completions.create(
-            model="llama-3.1-70b-versatile", # Usamos el modelo 70B para más capacidad de razonamiento
+            # Cambiamos a este que es el más estable actualmente
+            model="llama-3.1-8b-instant", 
             messages=[
                 {"role": "system", "content": prompt_sistema},
                 {"role": "user", "content": mensaje_usuario}
             ],
-            temperature=0.5
+            temperature=0.5,
+            max_tokens=2048 # Esto ayuda a que los resúmenes no se corten
         )
         return res.choices[0].message.content
     except Exception as e:
-        return f"Error: {e}"
-
+        return f"Error de conexión: {e}"
 # --- INTERFAZ ---
 st.title("🧠 CAMPAYO TOTAL MIND STATION")
 
