@@ -77,9 +77,10 @@ def llamar_ai(prompt_sistema, mensaje_usuario):
 # --- INTERFAZ ---
 st.title("🧠 CAMPAYO PRO: MEMORIA TOTAL")
 
-if temario_seleccionado == "Ninguno":
-    st.warning("👈 Sube un PDF o selecciona uno del historial en la barra lateral para comenzar.")
+if tema_elegido == "Ninguno":
+    st.warning("👈 Sube un PDF o selecciona uno del historial en la barra lateral.")
 else:
+    # El resto del código se queda igual...
     tabs = st.tabs(["📝 SUPER RESUMEN", "💬 CHAT DE APOYO", "🧪 TEST CIEGO", "🎭 ASOCIACIONES"])
 
     with tabs[0]:
