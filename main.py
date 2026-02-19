@@ -105,21 +105,44 @@ else:
             with st.chat_message("assistant"): st.markdown(resp)
             st.session_state.chat_pro.append({"role": "assistant", "content": resp})
 
-    with tabs[2]:
-        st.header("Test de Autoevaluación")
+   with tabs[2]:
+        st.header("🧪 Test de Autoevaluación")
         if st.button("🎲 Generar Nueva Pregunta"):
-            prompt_sys = "Genera una pregunta difícil. Escribe 'PREGUNTA: ...' y luego '---SOLUCIÓN---' con la respuesta."
+            # Forzamos un formato de respuesta clara
+            prompt_sys = "Genera una pregunta de examen. Indica las opciones A, B y C. Al final pon ---SOLUCIÓN--- y explica cuál es la correcta."
             st.session_state.pregunta_test = llamar_ai(prompt_sys, st.session_state.texto_pdf[:7000])
         
         if "pregunta_test" in st.session_state:
             partes = st.session_state.pregunta_test.split("---SOLUCIÓN---")
             st.markdown(partes[0])
-            with st.expander("👁️ VER RESPUESTA CORRECTA"):
-                if len(partes) > 1: st.success(partes[1])
+            
+            # Botones de respuesta rápida
+            col_a, col_b, col_c = st.columns(3)
+            with col_a: 
+                if st.button("Elegir A"): st.toast("¿Será la A? ¡Mira la solución!")
+            with col_b: 
+                if st.button("Elegir B"): st.toast("¿Será la B? ¡Comprueba abajo!")
+            with col_c: 
+                if st.button("Elegir C"): st.toast("¿Será la C? ¡Dale al desplegable!")
 
+            with st.expander("👁️ VER RESPUESTA CORRECTA"):
+                if len(partes) > 1:
+                    st.success(partes[1])
     with tabs[3]:
-        st.header("Asociaciones Contextuales")
-        dato = st.text_input("Dato difícil de este tema:")
+        st.header("🎭 Laboratorio de Asociaciones")
+        
+        # Mostramos los casilleros actuales para tenerlos a la vista
+        with st.expander("📚 Ver mis Casilleros Mentales"):
+            st.write(casilleros) # Esta es la variable que definiste en el sidebar
+            
+        dato = st.text_input("Dato difícil de este tema (Fecha, nombre, ley...):")
+        
         if st.button("✨ Crear Historia Increíble"):
-            res = llamar_ai("Experto en mnemotecnia.", f"Crea una asociación para: {dato} usando el contexto de {tema_elegido}")
-            st.success(res)
+            if dato:
+                with st.spinner("Ramón Campayo pensando..."):
+                    # Le pasamos a la IA tanto el dato como tus casilleros personales
+                    prompt_sys = f"Eres experto en mnemotecnia. Usa estos casilleros: {casilleros}"
+                    res = llamar_ai(prompt_sys, f"Crea una asociación inverosímil, ridícula y con movimiento para: {dato}")
+                    st.success(res)
+            else:
+                st.warning("Escribe algo que quieras memorizar.")
