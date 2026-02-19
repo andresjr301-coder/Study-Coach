@@ -74,64 +74,52 @@ def llamar_ai(prompt_sistema, mensaje_usuario):
         return res.choices[0].message.content
     except Exception as e: return f"Error: {e}"
 
-# --- INTERFAZ ---
+# --- INTERFAZ PRINCIPAL ---
 st.title("🧠 CAMPAYO PRO: MEMORIA TOTAL")
 
+# Cambiamos temario_seleccionado por tema_elegido
 if tema_elegido == "Ninguno":
-    st.warning("👈 Sube un PDF o selecciona uno del historial en la barra lateral.")
+    st.warning("👈 Sube un PDF o selecciona uno del historial en la barra lateral para comenzar.")
 else:
-    # El resto del código se queda igual...
+    # Usamos tabs para organizar las herramientas
     tabs = st.tabs(["📝 SUPER RESUMEN", "💬 CHAT DE APOYO", "🧪 TEST CIEGO", "🎭 ASOCIACIONES"])
 
     with tabs[0]:
-        st.header(f"Resumen Profundo: {temario_seleccionado}")
-        if st.button("🚀 Generar Resumen Exhaustivo (Puntos Clave)"):
-            with st.spinner("Analizando cada detalle..."):
-                prompt_sys = """Eres Ramón Campayo. Tu misión es extraer TODOS los puntos clave. 
-                No resumas de forma general. Usa este formato:
-                1. Conceptos Fundamentales (Explicación técnica).
-                2. Fechas y Datos Numéricos (Lista exacta).
-                3. Nombres y Autores.
-                4. Procesos paso a paso.
-                Sé extremadamente detallado y extenso."""
+        # Corregido: Usamos tema_elegido aquí también
+        st.header(f"Resumen Profundo: {tema_elegido}")
+        if st.button("🚀 Generar Resumen Exhaustivo"):
+            with st.spinner("Analizando cada detalle de todos los archivos..."):
+                prompt_sys = "Eres Ramón Campayo. Extrae TODOS los puntos clave, fechas y nombres del temario proporcionado."
                 res = llamar_ai(prompt_sys, st.session_state.texto_pdf[:10000])
                 st.markdown(res)
 
     with tabs[1]:
-        st.header("Chat Contextual")
+        st.header(f"Chat Contextual sobre {tema_elegido}")
         if "chat_pro" not in st.session_state: st.session_state.chat_pro = []
         for m in st.session_state.chat_pro:
             with st.chat_message(m["role"]): st.markdown(m["content"])
-        if p := st.chat_input("Pregunta sobre el temario..."):
+        if p := st.chat_input("Pregunta sobre este tema..."):
             st.session_state.chat_pro.append({"role": "user", "content": p})
             with st.chat_message("user"): st.markdown(p)
-            resp = llamar_ai(f"Basado en este texto: {st.session_state.texto_pdf[:6000]}", p)
+            resp = llamar_ai(f"Basado en estos documentos: {st.session_state.texto_pdf[:6000]}", p)
             with st.chat_message("assistant"): st.markdown(resp)
             st.session_state.chat_pro.append({"role": "assistant", "content": resp})
 
     with tabs[2]:
         st.header("Test de Autoevaluación")
-        if st.button("🎲 Generar Pregunta"):
-            prompt_sys = """Genera una pregunta de examen difícil. 
-            IMPORTANTE: No reveles la respuesta al principio. 
-            Escribe: 'PREGUNTA: ...' seguido de 'OPCIONES: A, B, C'. 
-            Luego, al final, escribe '---SOLUCIÓN---' y la respuesta con explicación."""
+        if st.button("🎲 Generar Nueva Pregunta"):
+            prompt_sys = "Genera una pregunta difícil. Escribe 'PREGUNTA: ...' y luego '---SOLUCIÓN---' con la respuesta."
             st.session_state.pregunta_test = llamar_ai(prompt_sys, st.session_state.texto_pdf[:7000])
         
         if "pregunta_test" in st.session_state:
-            # Separamos la pregunta de la solución
             partes = st.session_state.pregunta_test.split("---SOLUCIÓN---")
             st.markdown(partes[0])
-            with st.expander("👁️ VER RESPUESTA CORRECTA Y EXPLICACIÓN"):
+            with st.expander("👁️ VER RESPUESTA CORRECTA"):
                 if len(partes) > 1: st.success(partes[1])
-                else: st.write("La IA no generó la solución correctamente, intenta otra.")
 
     with tabs[3]:
-        st.header("Laboratorio de Asociaciones")
-        dato = st.text_input("Dato difícil de este PDF:")
-        if st.button("✨ Crear Asociación con Contexto"):
-            res = llamar_ai("Eres experto en mnemotecnia.", f"Usando el contexto de este temario, crea una asociación inverosímil para: {dato}")
+        st.header("Asociaciones Contextuales")
+        dato = st.text_input("Dato difícil de este tema:")
+        if st.button("✨ Crear Historia Increíble"):
+            res = llamar_ai("Experto en mnemotecnia.", f"Crea una asociación para: {dato} usando el contexto de {tema_elegido}")
             st.success(res)
-
-
-       
