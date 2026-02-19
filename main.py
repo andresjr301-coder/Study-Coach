@@ -2,35 +2,62 @@ import streamlit as st
 from groq import Groq
 from PyPDF2 import PdfReader
 
+# Configuración de página
 st.set_page_config(page_title="Campayo AI Free", layout="wide")
 
-# (Aquí mantén el bloque de ESTILO NEÓN que ya tienes)
+# --- ESTILO NEÓN ---
+st.markdown("""
+    <style>
+    .stApp { background-color: #050505; }
+    h1, h2, h3, p, span, label, .stMarkdown {
+        color: #00FF41 !important;
+        font-family: 'Courier New', Courier, monospace !important;
+    }
+    .stTextInput>div>div>input {
+        background-color: #1A1A1A !important;
+        color: #00FF41 !important;
+        border: 1px solid #00FF41 !important;
+    }
+    div.stButton > button {
+        background-color: #1A1A1A;
+        color: #00FF41;
+        border: 2px solid #00FF41;
+        box-shadow: 0 0 10px #00FF41;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 st.title("🧠 Campayo AI: Edición Gratuita")
 
-# Configuración en la barra lateral
-st.sidebar.title("Configuración")
-api_key = st.sidebar.text_input("Groq API Key (gsk_...)", type="password")
+# Entrada manual de la llave para evitar errores de sistema
+st.sidebar.title("Llave de Acceso")
+api_key_groq = st.sidebar.text_input("Pega tu llave de Groq (gsk_...)", type="password")
 
-if not api_key:
-    st.info("Por favor, introduce tu llave gratuita de Groq para empezar.")
+if not api_key_groq:
+    st.warning("⚠️ Por favor, pega tu llave 'gsk_...' en la barra lateral izquierda para comenzar.")
 else:
-    client = Groq(api_key=api_key)
-    
-    archivo = st.file_uploader("Sube tu PDF", type=["pdf"])
-    
-    if archivo and st.button("Aplicar Método Campayo"):
-        reader = PdfReader(archivo)
-        texto = "".join([page.extract_text() for page in reader.pages])
+    try:
+        client = Groq(api_key=api_key_groq)
         
-        # Usamos Llama 3 (Gratis y potente)
-        chat_completion = client.chat.completions.create(
-            messages=[
-                {
-                    "role": "user",
-                    "content": f"Resume este texto usando el método de Ramón Campayo: {texto[:5000]}",
-                }
-            ],
-            model="llama3-8b-8192",
-        )
-        st.markdown(chat_completion.choices[0].message.content)
+        archivo = st.file_uploader("Sube tu temario (PDF)", type=["pdf"])
+        
+        if archivo and st.button("🚀 Aplicar Método Campayo"):
+            with st.spinner("Procesando con Llama 3..."):
+                # Leer PDF
+                reader = PdfReader(archivo)
+                texto_completo = ""
+                for page in reader.pages:
+                    texto_completo += page.extract_text()
+                
+                # Pedir resumen a Groq
+                prompt = f"Actúa como Ramón Campayo. Resume este temario y crea asociaciones inverosímiles para los datos difíciles: {texto_completo[:5000]}"
+                
+                completion = client.chat.completions.create(
+                    model="llama3-8b-8192",
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                
+                st.subheader("✅ Análisis Completado:")
+                st.write(completion.choices[0].message.content)
+    except Exception as e:
+        st.error(f"Hubo un problema: {e}")
