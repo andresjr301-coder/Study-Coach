@@ -77,19 +77,17 @@ def llamar_ai(prompt_sistema, mensaje_usuario):
 # --- INTERFAZ PRINCIPAL ---
 st.title("🧠 CAMPAYO PRO: MEMORIA TOTAL")
 
-# Cambiamos temario_seleccionado por tema_elegido
 if tema_elegido == "Ninguno":
     st.warning("👈 Sube un PDF o selecciona uno del historial en la barra lateral para comenzar.")
 else:
-    # Usamos tabs para organizar las herramientas
+    # Creamos las 4 pestañas
     tabs = st.tabs(["📝 SUPER RESUMEN", "💬 CHAT DE APOYO", "🧪 TEST CIEGO", "🎭 ASOCIACIONES"])
 
     with tabs[0]:
-        # Corregido: Usamos tema_elegido aquí también
         st.header(f"Resumen Profundo: {tema_elegido}")
         if st.button("🚀 Generar Resumen Exhaustivo"):
-            with st.spinner("Analizando cada detalle de todos los archivos..."):
-                prompt_sys = "Eres Ramón Campayo. Extrae TODOS los puntos clave, fechas y nombres del temario proporcionado."
+            with st.spinner("Analizando cada detalle..."):
+                prompt_sys = "Eres Ramón Campayo. Extrae TODOS los puntos clave, fechas y nombres del temario."
                 res = llamar_ai(prompt_sys, st.session_state.texto_pdf[:10000])
                 st.markdown(res)
 
@@ -105,44 +103,31 @@ else:
             with st.chat_message("assistant"): st.markdown(resp)
             st.session_state.chat_pro.append({"role": "assistant", "content": resp})
 
-   with tabs[2]:
+    with tabs[2]:
         st.header("🧪 Test de Autoevaluación")
         if st.button("🎲 Generar Nueva Pregunta"):
-            # Forzamos un formato de respuesta clara
-            prompt_sys = "Genera una pregunta de examen. Indica las opciones A, B y C. Al final pon ---SOLUCIÓN--- y explica cuál es la correcta."
+            prompt_sys = "Genera una pregunta difícil. Indica opciones A, B y C. Pon ---SOLUCIÓN--- al final."
             st.session_state.pregunta_test = llamar_ai(prompt_sys, st.session_state.texto_pdf[:7000])
         
         if "pregunta_test" in st.session_state:
             partes = st.session_state.pregunta_test.split("---SOLUCIÓN---")
             st.markdown(partes[0])
-            
-            # Botones de respuesta rápida
             col_a, col_b, col_c = st.columns(3)
             with col_a: 
-                if st.button("Elegir A"): st.toast("¿Será la A? ¡Mira la solución!")
+                if st.button("Elegir A"): st.toast("¿Será la A?")
             with col_b: 
-                if st.button("Elegir B"): st.toast("¿Será la B? ¡Comprueba abajo!")
+                if st.button("Elegir B"): st.toast("¿Será la B?")
             with col_c: 
-                if st.button("Elegir C"): st.toast("¿Será la C? ¡Dale al desplegable!")
-
+                if st.button("Elegir C"): st.toast("¿Será la C?")
             with st.expander("👁️ VER RESPUESTA CORRECTA"):
-                if len(partes) > 1:
-                    st.success(partes[1])
+                if len(partes) > 1: st.success(partes[1])
+
     with tabs[3]:
         st.header("🎭 Laboratorio de Asociaciones")
-        
-        # Mostramos los casilleros actuales para tenerlos a la vista
         with st.expander("📚 Ver mis Casilleros Mentales"):
-            st.write(casilleros) # Esta es la variable que definiste en el sidebar
-            
-        dato = st.text_input("Dato difícil de este tema (Fecha, nombre, ley...):")
-        
+            st.write(casilleros)
+        dato = st.text_input("Dato difícil de este tema:")
         if st.button("✨ Crear Historia Increíble"):
-            if dato:
-                with st.spinner("Ramón Campayo pensando..."):
-                    # Le pasamos a la IA tanto el dato como tus casilleros personales
-                    prompt_sys = f"Eres experto en mnemotecnia. Usa estos casilleros: {casilleros}"
-                    res = llamar_ai(prompt_sys, f"Crea una asociación inverosímil, ridícula y con movimiento para: {dato}")
-                    st.success(res)
-            else:
-                st.warning("Escribe algo que quieras memorizar.")
+            prompt_sys = f"Experto en mnemotecnia. Usa estos casilleros: {casilleros}"
+            res = llamar_ai(prompt_sys, f"Crea una asociación para: {dato} usando el contexto de {tema_elegido}")
+            st.success(res)
