@@ -59,6 +59,14 @@ if tema_elegido != "Ninguno":
     st.session_state.texto_pdf = "\n\n--- NUEVA SECCIÓN/ARCHIVO ---\n\n".join(todos_los_textos)
     st.sidebar.info(f"📚 Estudiando {len(todos_los_textos)} archivos vinculados a {tema_elegido}")
 
+st.sidebar.divider()
+st.sidebar.subheader("📋 MIS CASILLEROS")
+# Esta línea es la que crea el cuadro para que escribas tus casilleros
+casilleros = st.sidebar.text_area(
+    "Edita tu lista (Formato: 1-Té, 2-Noé...):", 
+    value="1-Té, 2-Noé, 3-Amo, 4-Oca, 5-Ola, 6-Oso, 7-Ufo, 8-Hacha, 9-Ave, 10-Toro",
+    height=200
+)
 
 # --- FUNCIÓN IA ---
 def llamar_ai(prompt_sistema, mensaje_usuario):
