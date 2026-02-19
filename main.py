@@ -53,7 +53,7 @@ else:
                 prompt = f"Actúa como Ramón Campayo. Resume este temario y crea asociaciones inverosímiles para los datos difíciles: {texto_completo[:5000]}"
                 
                 completion = client.chat.completions.create(
-                    model="llama3-8b-8192",
+                    model="llama-3.1-8b-instant",
                     messages=[{"role": "user", "content": prompt}]
                 )
                 
